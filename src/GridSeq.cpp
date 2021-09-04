@@ -175,12 +175,14 @@ void GridSeq::step() {
 	lights[RUNNING_LIGHT].value = running ? 1.0 : 0.0;
 
 	bool nextStep = false;
+	bool resetThisStep = false;
 	if (resetTrigger.process(params[RESET_PARAM].value + inputs[RESET_INPUT].value)) {
 		phase = 0.0;
 		posX = 0;
 		posY = 0;
 		index = 0;
 		nextStep = true;
+		resetThisStep = true;
 		lights[RESET_LIGHT].value =  1.0;
 	}
 
@@ -198,7 +200,7 @@ void GridSeq::step() {
 			nextStep = true;
 		} 
 
-		if (rndPosTrigger.process(inputs[RND_DIR_INPUT].value + params[RND_MOVE_BTN_PARAM].value)) {
+		if (rndPosTrigger.process(inputs[RND_DIR_INPUT].value + params[RND_MOVE_BTN_PARAM].value) && !resetThisStep) {
 			nextStep = true;
 			switch(int(4 * randomUniform())){
 				case 0:handleMoveRight();break;
@@ -207,19 +209,19 @@ void GridSeq::step() {
 				case 3:handleMoveUp();break;
 			}
 		} 
-		if (rightTrigger.process(inputs[RIGHT_INPUT].value + params[RIGHT_MOVE_BTN_PARAM].value)) {
+		if (rightTrigger.process(inputs[RIGHT_INPUT].value + params[RIGHT_MOVE_BTN_PARAM].value) && !resetThisStep) {
 			nextStep = true;
 			handleMoveRight();
 		} 
-		if (leftTrigger.process(inputs[LEFT_INPUT].value + params[LEFT_MOVE_BTN_PARAM].value)) {
+		if (leftTrigger.process(inputs[LEFT_INPUT].value + params[LEFT_MOVE_BTN_PARAM].value) && !resetThisStep) {
 			nextStep = true;
 			handleMoveLeft();
 		} 
-		if (downTrigger.process(inputs[DOWN_INPUT].value + params[DOWN_MOVE_BTN_PARAM].value)) {
+		if (downTrigger.process(inputs[DOWN_INPUT].value + params[DOWN_MOVE_BTN_PARAM].value) && !resetThisStep) {
 			nextStep = true;
 			handleMoveDown();
 		} 
-		if (upTrigger.process(inputs[UP_INPUT].value + params[UP_MOVE_BTN_PARAM].value)) {
+		if (upTrigger.process(inputs[UP_INPUT].value + params[UP_MOVE_BTN_PARAM].value) && !resetThisStep) {
 			nextStep = true;
 			handleMoveUp();
 		}
@@ -228,7 +230,7 @@ void GridSeq::step() {
 	if (nextStep) {
 		index = posX + (posY * 4);
 		lights[STEPS_LIGHT + index].value = 1.0;
-		gatePulse.trigger(1e-3);
+		gatePulse.trigger();
 	}
 
 	lights[RESET_LIGHT].value -= lights[RESET_LIGHT].value / lightLambda / engineGetSampleRate();
