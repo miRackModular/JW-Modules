@@ -96,27 +96,27 @@ CatWidget::CatWidget(Cat *module) : ModuleWidget(module) {
 	}
 }
 
-struct InvertMenuItem : MenuItem {
-	Cat *cat;
-	void onAction(EventAction &e) override {
-		cat->invert = !cat->invert;
-	}
-	void step() override {
-		rightText = cat->invert ? "✔" : "";
-	}
-};
-
-struct Neg5MenuItem : MenuItem {
-	Cat *cat;
-	void onAction(EventAction &e) override {
-		cat->neg5ToPos5 = !cat->neg5ToPos5;
-	}
-	void step() override {
-		rightText = cat->neg5ToPos5 ? "✔" : "";
-	}
-};
-
 Menu *CatWidget::createContextMenu() {
+	struct InvertMenuItem : MenuItem {
+		Cat *cat;
+		void onAction(EventAction &e) override {
+			cat->invert = !cat->invert;
+		}
+		void step() override {
+			rightText = cat->invert ? "✔" : "";
+		}
+	};
+
+	struct Neg5MenuItem : MenuItem {
+		Cat *cat;
+		void onAction(EventAction &e) override {
+			cat->neg5ToPos5 = !cat->neg5ToPos5;
+		}
+		void step() override {
+			rightText = cat->neg5ToPos5 ? "✔" : "";
+		}
+	};
+
 	Menu *menu = ModuleWidget::createContextMenu();
 	Cat *cat = dynamic_cast<Cat*>(module);
 

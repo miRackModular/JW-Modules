@@ -253,6 +253,7 @@ struct WavHeadLogo : SVGScrew {
 	WavHeadLogo() {
 		sw->setSVG(SVG::load(assetPlugin(plugin, "res/WavHeadSmall.svg")));
 		box.size = sw->box.size;
+		canSquash = false;
 	}
 };
 

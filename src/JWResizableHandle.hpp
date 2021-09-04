@@ -53,10 +53,10 @@ struct JWModuleResizeHandle : Widget {
 			newBox.pos.x = originalBox.pos.x + originalBox.size.x - newBox.size.x;
 		}
 
-		// resize height
-		newBox.size.y += deltaY;
-		newBox.size.y = fmaxf(newBox.size.y, RACK_GRID_HEIGHT);
-		newBox.size.y = roundf(newBox.size.y / RACK_GRID_HEIGHT) * RACK_GRID_HEIGHT;
+		// // resize height
+		// newBox.size.y += deltaY;
+		// newBox.size.y = fmaxf(newBox.size.y, RACK_GRID_HEIGHT);
+		// newBox.size.y = roundf(newBox.size.y / RACK_GRID_HEIGHT) * RACK_GRID_HEIGHT;
 
 		gRackWidget->requestModuleBox(m, newBox);
 	}

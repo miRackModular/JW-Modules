@@ -7,7 +7,7 @@ void init(rack::Plugin *p)
 	plugin = p;
 	p->slug = "JW-Modules";
 	p->version = TOSTRING(VERSION);
-	p->addModel(modelCat);
+	// p->addModel(modelCat);
 	p->addModel(modelBouncyBalls);
 	p->addModel(modelFullScope);
 	p->addModel(modelGridSeq);

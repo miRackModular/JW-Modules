@@ -103,7 +103,7 @@ struct BouncyBalls : Module {
 	}
 
 	void step() override;
-	void reset() override {
+	void onReset() override {
 		resetBalls();
 		paddle.locked = true;
 		paddle.visible = true;
@@ -179,31 +179,31 @@ void BouncyBalls::step() {
 				b.vel.x *= -1;
 			}
 
-			b.paddlePulse.trigger(1e-3);
+			b.paddlePulse.trigger();
 		}
 
 		bool hitEdge = false;
 		if(b.box.pos.x + b.box.size.x >= displayWidth){
 			b.vel.x *= -1;
-			b.eastPulse.trigger(1e-3);
+			b.eastPulse.trigger();
 			hitEdge = true;
 		}
 
 		if(b.box.pos.x <= 0){
 			b.vel.x *= -1;
-			b.westPulse.trigger(1e-3);
+			b.westPulse.trigger();
 			hitEdge = true;
 		}
 
 		if(b.box.pos.y + b.box.size.y >= displayHeight){
 			b.vel.y *= -1;
-			b.southPulse.trigger(1e-3);
+			b.southPulse.trigger();
 			hitEdge = true;
 		}
 
 		if(b.box.pos.y <= 0){
 			b.vel.y *= -1;
-			b.northPulse.trigger(1e-3);
+			b.northPulse.trigger();
 			hitEdge = true;
 		}
 
@@ -238,7 +238,6 @@ struct BouncyBallDisplay : Widget {
 	BouncyBallDisplay(){}
 
 	void onMouseMove(EventMouseMove &e) override {
-		Widget::onMouseMove(e);
 		BouncyBalls* m = dynamic_cast<BouncyBalls*>(module);
 		if(!m->paddle.locked && !m->inputs[BouncyBalls::PAD_POS_X_INPUT].active){
 			m->paddle.box.pos.x = -50 + clampfjw(e.pos.x, 50, box.size.x - 50);
@@ -249,9 +248,23 @@ struct BouncyBallDisplay : Widget {
 	}
 
 	void onMouseDown(EventMouseDown &e) override {
-		Widget::onMouseDown(e);
+		if (windowIsShiftPressed())
+		{
+			BouncyBalls* m = dynamic_cast<BouncyBalls*>(module);
+			m->paddle.locked = false;
+			e.consumed = true;
+			e.target = this;
+
+			if(!m->inputs[BouncyBalls::PAD_POS_X_INPUT].active)
+				m->paddle.box.pos.x = -50 + clampfjw(e.pos.x, 50, box.size.x - 50);
+			if(!m->inputs[BouncyBalls::PAD_POS_Y_INPUT].active)
+				m->paddle.box.pos.y = clampfjw(e.pos.y, 0, box.size.y - 10);
+		}
+	}
+
+	void onMouseUp(EventMouseUp &e) override {
 		BouncyBalls* m = dynamic_cast<BouncyBalls*>(module);
-		m->paddle.locked = !m->paddle.locked;
+		m->paddle.locked = true;
 	}
 
 	void draw(NVGcontext *vg) override {
@@ -299,12 +312,7 @@ struct PaddleVisibleButton : TinyButton {
 };
 
 BouncyBallsWidget::BouncyBallsWidget(BouncyBalls *module) : ModuleWidget(module) {
-	box.size = Vec(RACK_GRID_WIDTH*48, RACK_GRID_HEIGHT);
-
-	SVGPanel *panel = new SVGPanel();
-	panel->box.size = box.size;
-	panel->setBackground(SVG::load(assetPlugin(plugin, "res/BouncyBalls.svg")));
-	addChild(panel);
+	setPanel(SVG::load(assetPlugin(plugin, "res/BouncyBalls.svg")));
 
 	BouncyBallDisplay *display = new BouncyBallDisplay();
 	display->module = module;

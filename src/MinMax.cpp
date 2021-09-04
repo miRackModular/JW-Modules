@@ -22,34 +22,13 @@ struct MinMax : Module {
 	};
 
 	float bufferX[BUFFER_SIZE] = {};
-	float bufferY[BUFFER_SIZE] = {};
 	int bufferIndex = 0;
 	float frameIndex = 0;
 
-	SchmittTrigger sumTrigger;
-	SchmittTrigger extTrigger;
-	bool lissajous = false;
 	SchmittTrigger resetTrigger;
 
 	MinMax() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS) {}
 	void step() override;
-
-	json_t *toJson() override {
-		json_t *rootJ = json_object();
-		json_object_set_new(rootJ, "lissajous", json_integer((int) lissajous));
-		return rootJ;
-	}
-
-	void fromJson(json_t *rootJ) override {
-		json_t *sumJ = json_object_get(rootJ, "lissajous");
-		if (sumJ)
-			lissajous = json_integer_value(sumJ);
-
-	}
-
-	void reset() override {
-		lissajous = false;
-	}
 };
 
 
@@ -63,20 +42,12 @@ void MinMax::step() {
 		if (++frameIndex > frameCount) {
 			frameIndex = 0;
 			bufferX[bufferIndex] = inputs[X_INPUT].value;
-			bufferY[bufferIndex] = inputs[Y_INPUT].value;
 			bufferIndex++;
 		}
 	}
 
 	// Are we waiting on the next trigger?
 	if (bufferIndex >= BUFFER_SIZE) {
-		// Trigger immediately if external but nothing plugged in, or in Lissajous mode
-		if (lissajous) {
-			bufferIndex = 0;
-			frameIndex = 0;
-			return;
-		}
-
 		// Reset the Schmitt trigger so we don't trigger immediately if the input is high
 		if (frameIndex == 0) {
 			resetTrigger.reset();
@@ -122,7 +93,7 @@ struct MinMaxDisplay : TransparentWidget {
 			vpp = vmax - vmin;
 		}
 	};
-	Stats statsX, statsY;
+	Stats statsX;
 
 	MinMaxDisplay() {
 		font = Font::load(assetPlugin(plugin, "res/DejaVuSansMono.ttf"));
@@ -142,27 +113,10 @@ struct MinMaxDisplay : TransparentWidget {
 	}
 
 	void draw(NVGcontext *vg) {
-		float gainX = 1;
-		float gainY = 1;
-		float offsetX = 0;
-		float offsetY = 0;
-
-		float valuesX[BUFFER_SIZE];
-		float valuesY[BUFFER_SIZE];
-		for (int i = 0; i < BUFFER_SIZE; i++) {
-			int j = i;
-			// Lock display to buffer if buffer update deltaTime <= 2^-11
-			if (module->lissajous)
-				j = (i + module->bufferIndex) % BUFFER_SIZE;
-			valuesX[i] = (module->bufferX[j] + offsetX) * gainX / 10.0;
-			valuesY[i] = (module->bufferY[j] + offsetY) * gainY / 10.0;
-		}
-
 		// Calculate and draw stats
 		if (++frame >= 4) {
 			frame = 0;
 			statsX.calculate(module->bufferX);
-			statsY.calculate(module->bufferY);
 		}
 		drawStats(vg, Vec(0, 20), "X", &statsX);
 	}
@@ -174,14 +128,7 @@ struct MinMaxWidget : ModuleWidget {
 };
 
 MinMaxWidget::MinMaxWidget(MinMax *module) : ModuleWidget(module) {
-	box.size = Vec(RACK_GRID_WIDTH*6, RACK_GRID_HEIGHT);
-
-	{
-		SVGPanel *panel = new SVGPanel();
-		panel->box.size = box.size;
-		panel->setBackground(SVG::load(assetPlugin(plugin, "res/MinMax.svg")));
-		addChild(panel);
-	}
+	setPanel(SVG::load(assetPlugin(plugin, "res/MinMax.svg")));
 
 	addChild(Widget::create<Screw_J>(Vec(16, 1)));
 	addChild(Widget::create<Screw_J>(Vec(16, 365)));

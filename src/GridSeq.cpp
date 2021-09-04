@@ -123,13 +123,13 @@ struct GridSeq : Module,QuantizeUtils {
 			gateMode = (GateMode)json_integer_value(gateModeJ);
 	}
 
-	void reset() override {
+	void onReset() override {
 		for (int i = 0; i < 16; i++) {
 			gateState[i] = true;
 		}
 	}
 
-	void randomize() override {
+	void onRandomize() override {
 		randomizeGateStates();
 	}
 
@@ -173,7 +173,7 @@ void GridSeq::step() {
 		running = !running;
 	}
 	lights[RUNNING_LIGHT].value = running ? 1.0 : 0.0;
-	
+
 	bool nextStep = false;
 	if (resetTrigger.process(params[RESET_PARAM].value + inputs[RESET_INPUT].value)) {
 		phase = 0.0;
@@ -277,15 +277,11 @@ struct GridSeqWidget : ModuleWidget {
 struct RandomizeNotesOnlyButton : SmallButton {
 	void onMouseDown(EventMouseDown &e) override {
 		SmallButton::onMouseDown(e);
-		GridSeqWidget *gsw = this->getAncestorOfType<GridSeqWidget>();
-		GridSeq *gs = dynamic_cast<GridSeq*>(gsw->module);
-		for (int i = 0; i < 16; i++) {
-			if(e.button == 0){
+		if(e.button == 0){
+			GridSeqWidget *gsw = this->getAncestorOfType<GridSeqWidget>();
+			GridSeq *gs = dynamic_cast<GridSeq*>(gsw->module);
+			for (int i = 0; i < 16; i++)
 				gsw->seqKnobs[i]->setValue(gs->getOneRandomNote());
-			} else if(e.button == 1){
-				//right click this to update the knobs (if randomized by cv in)
-				gsw->seqKnobs[i]->setValue(module->params[GridSeq::CELL_NOTE_PARAM + i].value);
-			}
 		}
 	}
 };
@@ -301,14 +297,7 @@ struct RandomizeGatesOnlyButton : SmallButton {
 };
 
 GridSeqWidget::GridSeqWidget(GridSeq *module) : ModuleWidget(module) {
-	box.size = Vec(RACK_GRID_WIDTH*20, RACK_GRID_HEIGHT);
-
-	{
-		SVGPanel *panel = new SVGPanel();
-		panel->box.size = box.size;
-		panel->setBackground(SVG::load(assetPlugin(plugin, "res/GridSeq.svg")));
-		addChild(panel);
-	}
+	setPanel(SVG::load(assetPlugin(plugin, "res/GridSeq.svg")));
 
 	addChild(Widget::create<Screw_J>(Vec(16, 1)));
 	addChild(Widget::create<Screw_J>(Vec(16, 365)));
@@ -383,7 +372,7 @@ GridSeqWidget::GridSeqWidget(GridSeq *module) : ModuleWidget(module) {
 			addParam(cellGateButton);
 			gateButtons.push_back(cellGateButton);
 
-			addChild(ModuleLightWidget::create<SmallLight<MyBlueValueLight>>(Vec(knobX+27.5, knobY-9.5), module, GridSeq::GATES_LIGHT + idx));
+			addChild(ModuleLightWidget::create<MediumLight<MyBlueValueLight>>(Vec(knobX+26.5, knobY-10.7), module, GridSeq::GATES_LIGHT + idx));
 		}
 	}
 

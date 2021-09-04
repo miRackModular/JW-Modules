@@ -38,7 +38,7 @@ struct FullScope : Module {
 
 	SchmittTrigger sumTrigger;
 	SchmittTrigger extTrigger;
-	bool lissajous = true;
+	bool lissajous = false;
 	bool external = false;
 	float lights[4] = {};
 	SchmittTrigger resetTrigger;
@@ -63,7 +63,7 @@ struct FullScope : Module {
 			external = json_integer_value(extJ);
 	}
 
-	void reset() override {
+	void onReset() override {
 		lissajous = true;
 		external = false;
 	}
@@ -191,7 +191,7 @@ struct FullScopeDisplay : TransparentWidget {
 		nvgLineCap(vg, NVG_ROUND);
 		nvgMiterLimit(vg, 2.0);
 		nvgStrokeWidth(vg, 1.5);
-		nvgGlobalCompositeOperation(vg, NVG_LIGHTER);
+		// nvgGlobalCompositeOperation(vg, NVG_LIGHTER);
 		nvgStroke(vg);
 		nvgResetScissor(vg);
 		nvgRestore(vg);
@@ -214,16 +214,16 @@ struct FullScopeDisplay : TransparentWidget {
 			valuesY[i] = (module->bufferY[j] + offsetY) * gainY / 10.0;
 		}
 
-		//color
-		if(module->inputs[FullScope::COLOR_INPUT].active){
-			float hue = rescalefjw(module->inputs[FullScope::COLOR_INPUT].value, 0.0, 6.0, 0, 1.0);
-			nvgStrokeColor(vg, nvgHSLA(hue, 0.5, 0.5, 0xc0));
-		} else {
-			nvgStrokeColor(vg, nvgRGBA(25, 150, 252, 0xc0));
-		}
 
 		// Draw waveforms
 		if (module->lissajous) {
+			//color
+			if(module->inputs[FullScope::COLOR_INPUT].active){
+				float hue = rescalefjw(module->inputs[FullScope::COLOR_INPUT].value, 0.0, 6.0, 0, 1.0);
+				nvgStrokeColor(vg, nvgHSLA(hue, 0.5, 0.5, 0xc0));
+			} else {
+				nvgStrokeColor(vg, nvgRGBA(25, 150, 252, 0xc0));
+			}
 			// X x Y
 			if (module->inputs[FullScope::X_INPUT].active || module->inputs[FullScope::Y_INPUT].active) {
 				drawWaveform(vg, valuesX, valuesY);
@@ -232,6 +232,7 @@ struct FullScopeDisplay : TransparentWidget {
 		else {
 			// Y
 			if (module->inputs[FullScope::Y_INPUT].active) {
+				nvgStrokeColor(vg, nvgRGBA(0xf3, 0x20, 0x28, 0xc0));
 				drawWaveform(vg, valuesY, NULL);
 			}
 
@@ -288,22 +289,22 @@ FullScopeWidget::FullScopeWidget(FullScope *module) : ModuleWidget(module) {
 		this->display = display;
 	}
 
-	int compX = 5, compY = -15, adder = 20;
-	addInput(Port::create<TinyPJ301MPort>(Vec(compX, compY+=adder), Port::INPUT, module, FullScope::X_INPUT));
-	addInput(Port::create<TinyPJ301MPort>(Vec(compX, compY+=adder), Port::INPUT, module, FullScope::Y_INPUT));
-	addInput(Port::create<TinyPJ301MPort>(Vec(compX, compY+=adder), Port::INPUT, module, FullScope::COLOR_INPUT));
-	addInput(Port::create<TinyPJ301MPort>(Vec(compX, compY+=adder), Port::INPUT, module, FullScope::ROTATION_INPUT));
-	addInput(Port::create<TinyPJ301MPort>(Vec(compX, compY+=adder), Port::INPUT, module, FullScope::TIME_INPUT));
+	int compX = -15, adder = 19;
+	addInput(Port::create<TinyPJ301MPort>(Vec(compX+=adder, 360), Port::INPUT, module, FullScope::X_INPUT), false);
+	addInput(Port::create<TinyPJ301MPort>(Vec(compX+=adder, 360), Port::INPUT, module, FullScope::Y_INPUT), false);
+	addInput(Port::create<TinyPJ301MPort>(Vec(compX+=adder, 360), Port::INPUT, module, FullScope::COLOR_INPUT), false);
+	addInput(Port::create<TinyPJ301MPort>(Vec(compX+=adder, 360), Port::INPUT, module, FullScope::ROTATION_INPUT), false);
+	addInput(Port::create<TinyPJ301MPort>(Vec(compX+=adder, 360), Port::INPUT, module, FullScope::TIME_INPUT), false);
 
-	addParam(ParamWidget::create<JwTinyKnob>(Vec(compX, compY+=adder), module, FullScope::X_POS_PARAM, -10.0, 10.0, 0.0));
-	addParam(ParamWidget::create<JwTinyKnob>(Vec(compX, compY+=adder), module, FullScope::Y_POS_PARAM, -10.0, 10.0, 0.0));
-	addParam(ParamWidget::create<JwTinyKnob>(Vec(compX, compY+=adder), module, FullScope::X_SCALE_PARAM, -2.0, 8.0, 1.0));
-	addParam(ParamWidget::create<JwTinyKnob>(Vec(compX, compY+=adder), module, FullScope::Y_SCALE_PARAM, -2.0, 8.0, 1.0));
-	addParam(ParamWidget::create<JwTinyKnob>(Vec(compX, compY+=adder), module, FullScope::ROTATION_PARAM, -10.0, 10.0, 0));
-	addParam(ParamWidget::create<JwTinyKnob>(Vec(compX, compY+=adder), module, FullScope::TIME_PARAM, -6.0, -16.0, -14.0));
+ 	addParam(ParamWidget::create<JwTinyKnob>(Vec(compX+=adder, 360), module, FullScope::X_POS_PARAM, -10.0, 10.0, 0.0), false);
+ 	addParam(ParamWidget::create<JwTinyKnob>(Vec(compX+=adder, 360), module, FullScope::Y_POS_PARAM, -10.0, 10.0, 0.0), false);
+ 	addParam(ParamWidget::create<JwTinyKnob>(Vec(compX+=adder, 360), module, FullScope::X_SCALE_PARAM, -2.0, 8.0, 0.0), false);
+ 	addParam(ParamWidget::create<JwTinyKnob>(Vec(compX+=adder, 360), module, FullScope::Y_SCALE_PARAM, -2.0, 8.0, 0.0), false);
+ 	addParam(ParamWidget::create<JwTinyKnob>(Vec(compX+=adder, 360), module, FullScope::ROTATION_PARAM, -10.0, 10.0, 0), false);
+ 	addParam(ParamWidget::create<JwTinyKnob>(Vec(compX+=adder, 360), module, FullScope::TIME_PARAM, -6.0, -16.0, -14.0), false);
 
-	addChild(Widget::create<Screw_J>(Vec(compX+2, compY+=adder)));
-	addChild(Widget::create<Screw_W>(Vec(compX+2, compY+=adder-5)));
+ 	addChild(Widget::create<Screw_J>(Vec(compX+25, 362)));
+ 	addChild(Widget::create<Screw_W>(Vec(compX+40, 362)));
 }
 
 void FullScopeWidget::step() {

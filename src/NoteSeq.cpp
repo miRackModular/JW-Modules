@@ -106,8 +106,9 @@ struct NoteSeq : Module,QuantizeUtils {
 	};
 
 	float displayWidth = 0, displayHeight = 0;
-	float rate = 1.0 / engineGetSampleRate();	
-	float lifeRate = 0.5 * engineGetSampleRate();	
+	// float rate = 1.0 / engineGetSampleRate();	
+	// float lifeRate = 0.5 * engineGetSampleRate();	
+	float stime = engineGetSampleTime();
 	long lifeCounter = 0;
 	int seqPos = 0;
 	float rndFloat0to1AtClockStep = randomUniform();
@@ -119,9 +120,10 @@ struct NoteSeq : Module,QuantizeUtils {
 	SchmittTrigger rndTrig, shiftUpTrig, shiftDownTrig;
 	SchmittTrigger rotateRightTrig, rotateLeftTrig, flipHorizTrig, flipVertTrig;
 	PulseGenerator gatePulse;
+	float rowVoltages[ROWS];
 
 	NoteSeq() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS) {
-		reset();
+		onReset();
 	}
 
 	~NoteSeq() {
@@ -130,17 +132,17 @@ struct NoteSeq : Module,QuantizeUtils {
 		delete [] colNotesCache2;
 	}
 
-	void randomize() override {
+	void onRandomize() override {
 		randomizeCells();
 	}
 
-	void reset() override {
+	void onReset() override {
 		resetSeq();
 		clearCells();
 	}
 
 	void onSampleRateChange() override {
-		rate = 1.0 / engineGetSampleRate();
+		stime = engineGetSampleTime();
 	}
 
 	json_t *toJson() override {
@@ -171,6 +173,8 @@ struct NoteSeq : Module,QuantizeUtils {
 	//TODO maybe add start pos knob and input
 
 	void step() override {
+		updateRowVoltagesIfNeeded();
+
 		if(params[LIFE_ON_SWITCH_PARAM].value){
 			if(lifeCounter % int(params[LIFE_SPEED_KNOB_PARAM].value) == 0){ 
 				stepLife();
@@ -198,10 +202,13 @@ struct NoteSeq : Module,QuantizeUtils {
 			clockStep();
 		}
 
-		bool pulse = gatePulse.process(1.0 / engineGetSampleRate());
+		bool pulse = gatePulse.process(stime);
+		int hi = getFinalHighestNote1to32() - 1;
+		int lo = getFinalLowestNote1to32() - 1;
+
 		// ////////////////////////////////////////////// POLY OUTPUTS //////////////////////////////////////////////
 		
-		int *polyYVals = getYValsFromBottomAtSeqPos(params[INCLUDE_INACTIVE_PARAM].value);
+		int *polyYVals = getYValsFromBottomAtSeqPos(params[INCLUDE_INACTIVE_PARAM].value, lo, hi);
 		for(int i=0;i<POLY;i++){ //param # starts from bottom
 			bool hasVal = polyYVals[i] > -1;
 			bool cellActive = hasVal && cells[iFromXY(seqPos, ROWS - polyYVals[i] - 1)];
@@ -216,46 +223,62 @@ struct NoteSeq : Module,QuantizeUtils {
 		if(outputs[MIN_VOCT_OUTPUT].active || outputs[MIN_GATE_OUTPUT].active || 
 		   outputs[MID_VOCT_OUTPUT].active || outputs[MID_GATE_OUTPUT].active ||
 		   outputs[MAX_VOCT_OUTPUT].active || outputs[MAX_GATE_OUTPUT].active ||
-		   outputs[RND_VOCT_OUTPUT].active || outputs[RND_GATE_OUTPUT].active){
-			int *monoYVals = getYValsFromBottomAtSeqPos(false);
+		   outputs[RND_VOCT_OUTPUT].active || outputs[RND_GATE_OUTPUT].active)
+		{
+			int *monoYVals = getYValsFromBottomAtSeqPos(false, lo, hi);
 			bool atLeastOne = monoYVals[0] > -1;
-			if(outputs[MIN_VOCT_OUTPUT].active && atLeastOne){
-				outputs[MIN_VOCT_OUTPUT].value = closestVoltageForRow(monoYVals[0]);
-			}
-			if(outputs[MIN_GATE_OUTPUT].active){
-				outputs[MIN_GATE_OUTPUT].value = (pulse && atLeastOne) ? 10.0 : 0.0;
-			}
 
-			if(outputs[MID_VOCT_OUTPUT].active && atLeastOne){
-				int minPos = 0;
-				int maxPos = findYValIdx(monoYVals, -1) - 1;
-				outputs[MID_VOCT_OUTPUT].value = closestVoltageForRow((monoYVals[minPos] + monoYVals[maxPos]) * 0.5);
-			}
-			if(outputs[MID_GATE_OUTPUT].active){
-				outputs[MID_GATE_OUTPUT].value = (pulse && atLeastOne) ? 10.0 : 0.0;
-			}
+			if (atLeastOne)
+			{
+				if (outputs[MIN_VOCT_OUTPUT].active)
+					outputs[MIN_VOCT_OUTPUT].value = closestVoltageForRow(monoYVals[0]);
+				
+				if (outputs[MID_VOCT_OUTPUT].active)
+				{
+					int maxPos = findYValIdx(monoYVals, -1) - 1;
+					outputs[MID_VOCT_OUTPUT].value = closestVoltageForRow((monoYVals[0] + monoYVals[maxPos]) * 0.5);
+				}
+				
+				if (outputs[MAX_VOCT_OUTPUT].active)
+				{
+					int maxPos = findYValIdx(monoYVals, -1) - 1;
+					outputs[MAX_VOCT_OUTPUT].value = closestVoltageForRow(monoYVals[maxPos]);
+				}
+				
+				if (outputs[RND_VOCT_OUTPUT].active)
+				{
+					int maxPos = findYValIdx(monoYVals, -1) - 1;
+					outputs[RND_VOCT_OUTPUT].value = closestVoltageForRow(monoYVals[int(rndFloat0to1AtClockStep * maxPos)]);
+				}
 
-			if(outputs[MAX_VOCT_OUTPUT].active && atLeastOne){
-				int maxPos = findYValIdx(monoYVals, -1) - 1;
-				outputs[MAX_VOCT_OUTPUT].value = closestVoltageForRow(monoYVals[maxPos]);
+				if (pulse)
+				{
+					outputs[MIN_GATE_OUTPUT].value = 10.0f;
+					outputs[MID_GATE_OUTPUT].value = 10.0f;
+					outputs[MAX_GATE_OUTPUT].value = 10.0f;
+					outputs[RND_GATE_OUTPUT].value = 10.0f;
+				}
+				else
+				{
+					outputs[MIN_GATE_OUTPUT].value = 0.0f;
+					outputs[MID_GATE_OUTPUT].value = 0.0f;
+					outputs[MAX_GATE_OUTPUT].value = 0.0f;
+					outputs[RND_GATE_OUTPUT].value = 0.0f;				
+				}
 			}
-			if(outputs[MAX_GATE_OUTPUT].active){
-				outputs[MAX_GATE_OUTPUT].value = (pulse && atLeastOne) ? 10.0 : 0.0;
-			}
+			else
+			{
+				//TODO: need to reset voct outputs here?
 
-			if(outputs[RND_VOCT_OUTPUT].active && atLeastOne){
-				int maxPos = findYValIdx(monoYVals, -1) - 1;
-				outputs[RND_VOCT_OUTPUT].value = closestVoltageForRow(monoYVals[int(rndFloat0to1AtClockStep * maxPos)]);
-			}
-			if(outputs[RND_GATE_OUTPUT].active){
-				outputs[RND_GATE_OUTPUT].value = (pulse && atLeastOne) ? 10.0 : 0.0;
+				outputs[MIN_GATE_OUTPUT].value = 0.0f;
+				outputs[MID_GATE_OUTPUT].value = 0.0f;
+				outputs[MAX_GATE_OUTPUT].value = 0.0f;
+				outputs[RND_GATE_OUTPUT].value = 0.0f;
 			}
 		}
 	}
 
-	int * getYValsFromBottomAtSeqPos(bool includeInactive){
-		int finalHigh = getFinalHighestNote1to32();
-		int finalLow = getFinalLowestNote1to32();
+	int * getYValsFromBottomAtSeqPos(bool includeInactive, int finalLow, int finalHigh){
 		ColNotes *cache = includeInactive ? colNotesCache : colNotesCache2;
 		if(cache[seqPos].valid && cache[seqPos].finalHigh == finalHigh && cache[seqPos].finalLow == finalLow){
 			return cache[seqPos].vals;
@@ -307,15 +330,28 @@ struct NoteSeq : Module,QuantizeUtils {
 		return params[LOWEST_NOTE_PARAM].value + inputOffset;
 	}
 
-	float closestVoltageForRow(int cellYFromBottom){
+	void updateRowVoltagesIfNeeded()
+	{
+		static int o, r, s;
 		int octave = params[OCTAVE_KNOB_PARAM].value;
 		int rootNote = params[NOTE_KNOB_PARAM].value;
 		int scale = params[SCALE_KNOB_PARAM].value;
-		return closestVoltageInScale(octave + (cellYFromBottom * 0.0833), rootNote, scale);
+
+		if (octave != o || rootNote != r || scale != s)
+		{
+			o = octave, r = rootNote, s = scale;
+			
+			for (int i = 0; i < ROWS; i++)
+				rowVoltages[i] = closestVoltageInScale(octave + (i * 0.0833), rootNote, scale);
+		}
+	}
+
+	float closestVoltageForRow(int cellYFromBottom){
+		return rowVoltages[cellYFromBottom];
 	}
 
 	void clockStep(){
-		gatePulse.trigger(1e-3);
+		gatePulse.trigger();
 		lifeCounter++;
 		rndFloat0to1AtClockStep = randomUniform();
 
@@ -632,15 +668,14 @@ struct NoteSeqDisplay : Widget {
 
 		//cells
 		nvgFillColor(vg, nvgRGB(25, 150, 252)); //blue
-		for(int i=0;i<CELLS;i++){
-			if(module->cells[i]){
-				int y = i / ROWS;
-				int x = i % COLS;
-				nvgBeginPath(vg);
-				nvgRect(vg, x * HW, y * HW, HW, HW);
-				nvgFill(vg);
-			}
-		}
+		nvgBeginPath(vg);
+		nvgAllowMergeSubpaths(vg);
+		bool *cell = module->cells;
+		for (int y = 0; y < ROWS; y++)
+			for (int x = 0; x < COLS; x++)
+				if(*(cell++))
+					nvgRect(vg, x * HW, y * HW, HW, HW);
+		nvgFill(vg);
 
 		nvgStrokeWidth(vg, 2);
 

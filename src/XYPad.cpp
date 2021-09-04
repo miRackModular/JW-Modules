@@ -85,7 +85,7 @@ struct XYPad : Module {
 	XYPad() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS) {}
 	void step() override;
 
-	void reset() override {
+	void onReset() override {
 	    setState(STATE_IDLE);
 	    points.clear();
 	    defaultPos();
@@ -455,7 +455,7 @@ struct XYPadDisplay : Widget {
 	float dragY = 0;
 
 	void onMouseDown(EventMouseDown &e) override { 
-		if (e.button == 0) {
+		if (e.button == 0 && windowIsShiftPressed()) {
 			e.consumed = true;
 			e.target = this;
 
@@ -599,12 +599,7 @@ struct RandomVariationButton : TinyButton {
 };
 
 XYPadWidget::XYPadWidget(XYPad *module) : ModuleWidget(module) {
-	box.size = Vec(RACK_GRID_WIDTH*24, RACK_GRID_HEIGHT);
-
-	SVGPanel *panel = new SVGPanel();
-	panel->box.size = box.size;
-	panel->setBackground(SVG::load(assetPlugin(plugin, "res/XYPad.svg")));
-	addChild(panel);
+	setPanel(SVG::load(assetPlugin(plugin, "res/XYPad.svg")));
 
 	XYPadDisplay *display = new XYPadDisplay();
 	display->module = module;

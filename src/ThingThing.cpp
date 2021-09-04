@@ -41,7 +41,7 @@ struct ThingThing : Module {
 	}
 
 	void step() override {};
-	void reset() override {}
+	void onReset() override {}
 
 	json_t *toJson() override {
 		json_t *rootJ = json_object();
@@ -121,12 +121,7 @@ struct ThingThingWidget : ModuleWidget {
 };
 
 ThingThingWidget::ThingThingWidget(ThingThing *module) : ModuleWidget(module) {
-	box.size = Vec(RACK_GRID_WIDTH*20, RACK_GRID_HEIGHT);
-
-	SVGPanel *panel = new SVGPanel();
-	panel->box.size = box.size;
-	panel->setBackground(SVG::load(assetPlugin(plugin, "res/ThingThing.svg")));
-	addChild(panel);
+	setPanel(SVG::load(assetPlugin(plugin, "res/ThingThing.svg")));
 
 	ThingThingDisplay *display = new ThingThingDisplay();
 	display->module = module;
@@ -138,14 +133,14 @@ ThingThingWidget::ThingThingWidget(ThingThing *module) : ModuleWidget(module) {
 	addChild(Widget::create<Screw_W>(Vec(280, 365)));
 
 	for(int i=0; i<4; i++){
-		addInput(Port::create<TinyPJ301MPort>(Vec(5+(20*i), 360), Port::INPUT, module, ThingThing::ANG_INPUT+i+1));
+		addInput(Port::create<TinyPJ301MPort>(Vec(5+(20*i), 360), Port::INPUT, module, ThingThing::ANG_INPUT+i+1), false);
 	}
 	
-	addInput(Port::create<TinyPJ301MPort>(Vec(140, 360), Port::INPUT, module, ThingThing::BALL_RAD_INPUT));
-	addParam(ParamWidget::create<JwTinyKnob>(Vec(155, 360), module, ThingThing::BALL_RAD_PARAM, 0.0, 30.0, 10.0));
+	addInput(Port::create<TinyPJ301MPort>(Vec(140, 360), Port::INPUT, module, ThingThing::BALL_RAD_INPUT), false);
+	addParam(ParamWidget::create<JwTinyKnob>(Vec(155, 360), module, ThingThing::BALL_RAD_PARAM, 0.0, 30.0, 10.0), false);
 
-	addInput(Port::create<TinyPJ301MPort>(Vec(190, 360), Port::INPUT, module, ThingThing::ZOOM_MULT_INPUT));
-	addParam(ParamWidget::create<JwTinyKnob>(Vec(205, 360), module, ThingThing::ZOOM_MULT_PARAM, 1.0, 200.0, 20.0));
+	addInput(Port::create<TinyPJ301MPort>(Vec(190, 360), Port::INPUT, module, ThingThing::ZOOM_MULT_INPUT), false);
+	addParam(ParamWidget::create<JwTinyKnob>(Vec(205, 360), module, ThingThing::ZOOM_MULT_PARAM, 1.0, 200.0, 20.0), false);
 }
 
 Model *modelThingThing = Model::create<ThingThing, ThingThingWidget>("JW-Modules", "ThingThing", "Thing Thing", VISUAL_TAG);
