@@ -31,7 +31,7 @@ struct SimpleClock : Module {
 	SchmittTrigger runningTrigger;
 	SchmittTrigger resetTrigger;
 	float runningLight = 0.0;
-	float phase = 0.0;
+	double phase = 0.0;
 	PulseGenerator gatePulse;
 	PulseGenerator resetPulse;
 	int stepCount = 0;
@@ -75,7 +75,7 @@ void SimpleClock::step() {
 
 	bool nextStep = false;
 	if (running) {
-		float clockTime = powf(2.0, params[CLOCK_PARAM].value);
+		double clockTime = powf(2.0, params[CLOCK_PARAM].value);
 		phase += clockTime / engineGetSampleRate();
 		if (phase >= 1.0) {
 			phase -= 1.0;
