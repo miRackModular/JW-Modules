@@ -73,7 +73,9 @@ struct GridSeq : Module,QuantizeUtils {
 	GateMode gateMode = TRIGGER;
 	PulseGenerator gatePulse;
 
-	GridSeq() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS) {}
+	GridSeq() : Module(NUM_PARAMS, NUM_INPUTS, NUM_OUTPUTS, NUM_LIGHTS) {
+		lights[STEPS_LIGHT + index].value = 1.f;
+	}
 
 	void step() override;
 
@@ -180,7 +182,9 @@ void GridSeq::step() {
 		phase = 0.0;
 		posX = 0;
 		posY = 0;
+		lights[STEPS_LIGHT + index].value = 0.0;
 		index = 0;
+		lights[STEPS_LIGHT + index].value = 1.0;		
 		nextStep = true;
 		resetThisStep = true;
 		lights[RESET_LIGHT].value =  1.0;
@@ -228,6 +232,7 @@ void GridSeq::step() {
 	}
 	
 	if (nextStep) {
+		lights[STEPS_LIGHT + index].value = 0.0;
 		index = posX + (posY * 4);
 		lights[STEPS_LIGHT + index].value = 1.0;
 		gatePulse.trigger();
@@ -247,8 +252,7 @@ void GridSeq::step() {
 		else if (gateMode == RETRIGGER)
 			gateOn = gateOn && !pulse;
 
-		if(lights[STEPS_LIGHT + i].value > 0){ lights[STEPS_LIGHT + i].value -= lights[STEPS_LIGHT + i].value / lightLambda / engineGetSampleRate(); }
-		lights[GATES_LIGHT + i].value = gateState[i] ? 1.0 - lights[STEPS_LIGHT + i].value : lights[STEPS_LIGHT + i].value;
+		lights[GATES_LIGHT + i].value = gateState[i];
 	}
 
 	// Cells
@@ -375,6 +379,7 @@ GridSeqWidget::GridSeqWidget(GridSeq *module) : ModuleWidget(module) {
 			gateButtons.push_back(cellGateButton);
 
 			addChild(ModuleLightWidget::create<MediumLight<MyBlueValueLight>>(Vec(knobX+26.5, knobY-10.7), module, GridSeq::GATES_LIGHT + idx));
+			addChild(ModuleLightWidget::create<MediumLight<MyYellowValueLight>>(Vec(knobX, knobY-16), module, GridSeq::STEPS_LIGHT + idx));
 		}
 	}
 

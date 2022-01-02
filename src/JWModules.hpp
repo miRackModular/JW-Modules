@@ -175,6 +175,13 @@ struct MyGreenValueLight : ModuleLightWidget {
 	}
 };
 
+struct MyYellowValueLight : ModuleLightWidget {
+	MyYellowValueLight() {
+		firstLightId = 1;
+		addBaseColor(nvgRGB(255, 243, 9));
+	}
+};
+
 struct MyRedValueLight : ModuleLightWidget {
 	MyRedValueLight() {
 		firstLightId = 1;
