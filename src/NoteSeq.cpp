@@ -597,6 +597,10 @@ struct NoteSeq : Module,QuantizeUtils {
 		return cellX + cellY * ROWS;
 	}
 
+	int iFromDisplayPos(float displayX, float displayY){
+		return iFromXY(int(displayX / HW), int(displayY / HW));
+	}
+
 	int xFromI(int cellI){
 		return cellI % COLS;
 	}
@@ -613,6 +617,7 @@ struct NoteSeqDisplay : Widget {
 	float initY = 0;
 	float dragX = 0;
 	float dragY = 0;
+	bool drawing = false;
 	NoteSeqDisplay(){}
 
 	void onMouseDown(EventMouseDown &e) override { 
@@ -621,8 +626,14 @@ struct NoteSeqDisplay : Widget {
 			e.target = this;
 			initX = e.pos.x;
 			initY = e.pos.y;
-			currentlyTurningOn = !module->isCellOnByDisplayPos(e.pos.x, e.pos.y);
-			module->setCellOnByDisplayPos(e.pos.x, e.pos.y, currentlyTurningOn);
+			if (windowIsShiftPressed())
+			{
+				drawing = true;
+				currentlyTurningOn = !module->isCellOnByDisplayPos(e.pos.x, e.pos.y);
+				module->setCellOnByDisplayPos(e.pos.x, e.pos.y, currentlyTurningOn);
+			}
+			else
+				drawing = false;
 		}
 	}
 	
@@ -634,12 +645,26 @@ struct NoteSeqDisplay : Widget {
 		dragY = gRackWidget->lastMousePos.y;
 	}
 
-	void onDragEnd(EventDragEnd &e) override {}
+	void onDragEnd(EventDragEnd &e) override {
+		if (!drawing)
+		{
+			float newDragX = gRackWidget->lastMousePos.x;
+			float newDragY = gRackWidget->lastMousePos.y;
+			if (module->iFromDisplayPos(initX+(newDragX-dragX), initY+(newDragY-dragY)) == module->iFromDisplayPos(initX, initY))
+			{
+				bool on = module->isCellOnByDisplayPos(initX+(newDragX-dragX), initY+(newDragY-dragY));
+				module->setCellOnByDisplayPos(initX+(newDragX-dragX), initY+(newDragY-dragY), !on);
+			}
+		}
+	}
 
 	void onDragMove(EventDragMove &e) override {
-		float newDragX = gRackWidget->lastMousePos.x;
-		float newDragY = gRackWidget->lastMousePos.y;
-		module->setCellOnByDisplayPos(initX+(newDragX-dragX), initY+(newDragY-dragY), currentlyTurningOn);
+		if (drawing)
+		{
+			float newDragX = gRackWidget->lastMousePos.x;
+			float newDragY = gRackWidget->lastMousePos.y;
+			module->setCellOnByDisplayPos(initX+(newDragX-dragX), initY+(newDragY-dragY), currentlyTurningOn);
+		}
 	}
 
 	void draw(NVGcontext *vg) override {
